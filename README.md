@@ -134,41 +134,43 @@ San Francisco does something unusually useful here: **the City assigns every reg
 to a named commercial corridor**, so you are not drawing a boundary and defending it. These are
 the City's own designations.
 
-| Corridor | Businesses | Industries | Suppliers with depth | Tracts |
-|---|---:|---:|---:|---:|
-| **Chinatown** | 413 | 71 | 37 | 9 |
-| **Market/Castro** | 314 | 62 | **57** | 8 |
-| **Mission Street** | 174 | 50 | 35 | **20** |
-| **Union Street** | 153 | 39 | 41 | 5 |
-| **North Beach** | 148 | 35 | 18 | 4 |
-| **Parkside Taraval** | 109 | 38 | 19 | 4 |
-| **24th St** | 98 | 33 | 22 | 5 |
-| **Geary Boulevard** | 92 | 29 | 17 | 5 |
-| **West Portal** | 90 | 36 | 14 | ⚠️ 1 |
+| Corridor | Businesses | Industries | Suppliers with depth | Tracts | Poverty |
+|---|---:|---:|---:|---:|---:|
+| **Central Market** | 230 | 65 | **86** | 7 | **22%** |  ← the default
+| **Chinatown** | 413 | 71 | 37 | 9 | — |
+| **Market/Castro** | 314 | 62 | 57 | 8 | — |
+| **Mission Street** | 174 | 50 | 35 | **20** | — |
+| **Union Street** | 153 | 39 | 41 | 5 | — |
+| **North Beach** | 148 | 35 | 18 | 4 | 13% |
+| **Parkside Taraval** | 109 | 38 | 19 | 4 | — |
+| **24th St** | 98 | 33 | 22 | 5 | — |
+| **Geary Boulevard** | 92 | 29 | 17 | 5 | — |
+| **West Portal** | 90 | 36 | 14 | ⚠️ 1 | — |
 
-Every number here was **measured from the published snapshot on 2026-08-09**, not estimated. These
-are counts *after* we remove sole proprietors and home-address registrations, which is most of what
-the City publishes — Chinatown's 1,909 listings become 413 businesses. The section on
+Every number was **measured from the published snapshot on 2026-08-09**, not estimated. These are
+counts *after* we remove sole proprietors and home-address registrations, which is most of what the
+City publishes — Chinatown's 1,909 listings become 413 businesses. The section on
 [the data](#the-data-and-why-we-chose-it) explains why.
 
-**Read the third column before you choose.** "Suppliers with depth" is how many businesses have
-anything **two hops** downstream of them — and it is the number that decides whether a cascade
-query returns something interesting or an empty set. Notice it does not track size: Market/Castro
-has fewer businesses than Chinatown and **more than half again as many** businesses with real
-downstream reach.
+**Read the third column before you choose, not the first.** "Suppliers with depth" counts
+businesses that have anything **two hops** downstream of them, and it decides whether a cascade
+query returns something interesting or an empty set. **It does not track size.** Central Market has
+*half* Chinatown's businesses and **more than twice** as many with real downstream reach. If you
+take one thing from this table, take that: you cannot tell which businesses hold a neighbourhood up
+by counting how many there are. That is the entire challenge, visible before you write any code.
 
-**Notice also how small that column is everywhere.** In North Beach, 18 of 148 businesses have a
-two-hop cascade. That is not a data problem — most businesses on a commercial street sell to the
-public, not to each other. **Finding which of your applicants actually hold something up is a large
-part of what your agent is for**, and a grant officer with forty applications has no way to know.
+**Notice how small that column is everywhere.** In North Beach, 18 of 148 businesses have a two-hop
+cascade. That is not a data problem — most businesses on a commercial street sell to the public, not
+to each other. **Finding which of your applicants actually hold something up is a large part of what
+your agent is for**, and a grant officer with forty applications has no way to know.
 
-**The last column matters for your equity audit.** With one census tract, West Portal cannot
-support an audit at all — there is nothing to compare against. Mission Street's twenty is the most
-generous in the set.
+**The last two columns matter for your equity audit.** With a single census tract, West Portal
+cannot support an audit at all — there is nothing to compare against. Central Market combines the
+most graph depth with the highest-need tracts in the set, which makes it the most interesting place
+to ask whether the money went where the need is.
 
-**Two corridors are deliberately absent.** *Third Street* yields 40 businesses, below the floor,
-and would give you almost no graph. *Central Market* is large and worth having; it is being
-republished. Ask a coach whether it is available yet.
+**Third Street is deliberately absent.** It yields 40 businesses, below the floor, and almost no
+graph structure. Appendix B will tell you the same thing if you try it.
 
 **Any of these will work.** If you want one that is not on the list, **Appendix B of the notebook**
 measures it in about a minute and tells you plainly whether it is worth an afternoon.
@@ -489,7 +491,7 @@ about directly.
 **If the notebook won't run**, there's a headless fallback. From the repo root in Cloud Shell:
 
 ```bash
-bash scripts/load.sh north-beach
+bash scripts/load.sh central-market
 ```
 
 ```bash
