@@ -134,34 +134,44 @@ San Francisco does something unusually useful here: **the City assigns every reg
 to a named commercial corridor**, so you are not drawing a boundary and defending it. These are
 the City's own designations.
 
-| Corridor | Published | After our filters | Industries | Verdict |
-|---|---:|---:|---:|---|
-| **Chinatown** | 1,909 | — | — | Largest. Run Appendix B |
-| **Market/Castro** | 1,519 | — | — | Run Appendix B |
-| **Central Market** | 1,367 | — | — | Run Appendix B |
-| **Mission Street** | 1,024 | — | — | Run Appendix B |
-| **Union Street** | 885 | — | — | Run Appendix B |
-| **Parkside Taraval** | 596 | — | — | Run Appendix B |
-| **North Beach** | 579 | **148** | **35** | ✅ **Tested end to end. The default** |
-| **Geary Boulevard** | 479 | — | — | Run Appendix B |
-| **West Portal** | 476 | — | — | Run Appendix B |
-| **24th St** | 473 | **89** | **30** | ⚠️ Workable but thin — say so in your demo |
-| **Third Street** | 311 | **36** | **19** | ❌ Too thin. Almost no graph structure |
+| Corridor | Businesses | Industries | Suppliers with depth | Tracts |
+|---|---:|---:|---:|---:|
+| **Chinatown** | 413 | 71 | 37 | 9 |
+| **Market/Castro** | 314 | 62 | **57** | 8 |
+| **Mission Street** | 174 | 50 | 35 | **20** |
+| **Union Street** | 153 | 39 | 41 | 5 |
+| **North Beach** | 148 | 35 | 18 | 4 |
+| **Parkside Taraval** | 109 | 38 | 19 | 4 |
+| **24th St** | 98 | 33 | 22 | 5 |
+| **Geary Boulevard** | 92 | 29 | 17 | 5 |
+| **West Portal** | 90 | 36 | 14 | ⚠️ 1 |
 
-Published counts are active businesses as the City reports them, read live on 2026-08-09. **The
-column that matters is the second one.** We remove sole proprietors and home-address
-registrations before building anything (see [the data section](#the-data-and-why-we-chose-it)),
-and that removes most of the file — North Beach's 579 becomes 148. Which is fine at 579 and fatal
-at 311.
+Every number here was **measured from the published snapshot on 2026-08-09**, not estimated. These
+are counts *after* we remove sole proprietors and home-address registrations, which is most of what
+the City publishes — Chinatown's 1,909 listings become 413 businesses. The section on
+[the data](#the-data-and-why-we-chose-it) explains why.
 
-**We have measured three corridors end to end.** The dashes are not us being coy: we have not run
-them, and we will not publish a number we have not measured. **Appendix B of the notebook measures
-any corridor in about a minute** and gives you the same verdict we gave these three. Run it before
-you commit an afternoon.
+**Read the third column before you choose.** "Suppliers with depth" is how many businesses have
+anything **two hops** downstream of them — and it is the number that decides whether a cascade
+query returns something interesting or an empty set. Notice it does not track size: Market/Castro
+has fewer businesses than Chinatown and **more than half again as many** businesses with real
+downstream reach.
 
-**Bigger is better here, more than you would expect.** A corridor also needs enough census tracts
-for the equity audit to say anything — North Beach has four, which is workable and not generous.
-The larger corridors are a safer bet on every axis.
+**Notice also how small that column is everywhere.** In North Beach, 18 of 148 businesses have a
+two-hop cascade. That is not a data problem — most businesses on a commercial street sell to the
+public, not to each other. **Finding which of your applicants actually hold something up is a large
+part of what your agent is for**, and a grant officer with forty applications has no way to know.
+
+**The last column matters for your equity audit.** With one census tract, West Portal cannot
+support an audit at all — there is nothing to compare against. Mission Street's twenty is the most
+generous in the set.
+
+**Two corridors are deliberately absent.** *Third Street* yields 40 businesses, below the floor,
+and would give you almost no graph. *Central Market* is large and worth having; it is being
+republished. Ask a coach whether it is available yet.
+
+**Any of these will work.** If you want one that is not on the list, **Appendix B of the notebook**
+measures it in about a minute and tells you plainly whether it is worth an afternoon.
 
 **The number that decides whether your graph is interesting is not the business count. It is the
 industry variety.** Supply edges exist only between industries that trade with each other, so 300
