@@ -34,16 +34,49 @@ simplification. It is the scale at which this problem actually exists.
 
 ## The five things you're working with
 
-Small vocabulary, used consistently from here on. Worth thirty seconds now, because two of these
-terms sound like each other and mean very different things.
+Small vocabulary, used consistently from here on. Here is one block of a corridor, drawn the way
+your data is actually shaped:
 
-| Term | What it means |
+```mermaid
+flowchart LR
+    E1(["🏢 Office block<br/><i>1,400 workers</i>"])
+    R["☕ Bayside Roasters<br/><i>coffee roasting</i>"]
+    C["🥐 Sixth St Café"]
+    D["🥪 Yerba Deli"]
+    K["🍽️ Kearny Kitchen<br/><i>caterer</i>"]
+    H["🎪 Larkin Event Hall"]
+    P["🅿️ Mint Plaza Parking"]
+
+    R -- Supplies --> C
+    R -- Supplies --> D
+    R -- Supplies --> K
+    K -- Supplies --> H
+    E1 -- DrawsFootfall --> C
+    E1 -- DrawsFootfall --> D
+    E1 -- DrawsFootfall --> P
+
+    style E1 fill:#c2185b,stroke:#880e4f,color:#fff
+    style R fill:#1565c0,stroke:#0d47a1,color:#fff
+```
+
+| Term | In the picture |
 |---|---|
-| **Corridor** | A named commercial strip—a few hundred businesses along a street. San Francisco publishes its own corridor boundaries, so you are not drawing this yourself |
-| **Node** | One thing in the network. A business, or an employer block full of workers |
-| **Edge** | One relationship between two nodes. *This business supplies that one.* *These workers eat at that one.* Edges are the whole challenge |
-| **Cascade** | What is exposed when a node fails, traced outward across edges. Not a list of neighbours—a path, several hops deep |
-| **Traversal** | The act of walking the graph. `MATCH ... {1,3}` is a traversal. A `JOIN` is not |
+| **Node** | Every box. Two kinds: a **Business** (blue and grey) and an **Employer** block (pink). Employers are census blocks with a real worker count, not companies |
+| **Edge** | Every arrow, and it has a direction. **`Supplies`** runs supplier → buyer. **`DrawsFootfall`** runs employer → the businesses those workers spend at |
+| **Property** | What an edge or node carries. `Supplies` has `intensity`, how much of a buyer's input budget that industry represents. `DrawsFootfall` has `worker_share` |
+| **Cascade** | What is exposed when a node fails. Bayside Roasters closing reaches the café, the deli, the caterer — **and then Larkin Event Hall, which never bought a bean from them** |
+| **Traversal** | Walking those arrows. `-[:Supplies]->{1,2}` follows the supply arrow one or two steps. That `{1,2}` is the part SQL cannot do |
+
+**The single most important thing about this picture: arrows point from the thing depended upon
+toward the thing that depends on it.** Follow an arrow forward and you are tracing *exposure*.
+Follow it backward and you are tracing *what this business needs to survive*. Both are legitimate
+questions and they give completely different answers, so decide which one you are asking before
+you write a `MATCH`.
+
+Notice Mint Plaza Parking. It has one edge in and none out — **a leaf.** Most businesses on a real
+street are leaves, because they sell to the public rather than to each other. In the default
+corridor only 86 of 230 businesses have anything two hops downstream of them, and finding which
+ones is a large part of what your agent is for.
 
 The whole challenge is: **a corridor and a budget in, a defended funding recommendation out, with
 the cascade it protects shown.**
@@ -67,10 +100,30 @@ is worth solving.
 | 🌾 **Micro-producer & supply continuity** | A supplier or small manufacturer is failing, and things depend on it | A community lender or co-op coordinator | The damage is upstream and invisible. Nobody in distress has filed anything yet |
 | 🏭 **Anchor closure** | A large employer announced it is leaving in 90 days | The same officer, before anyone applies for anything | **There are no applicants.** The agent has to find who is exposed before they know it |
 
-Notice that the third one runs the graph *backwards* relative to the first two. Main Street starts
-at a business and asks who depends on it. Anchor closure starts at a shock and asks what it
-reaches. Same graph, opposite direction, genuinely different query—which is why picking a track
-and committing to it beats gesturing at all three.
+### Read the picture above three ways—one per track
+
+This is the clearest reason to commit to a track rather than gesture at all three, because each
+one enters the graph somewhere different and **one of them changes direction halfway.**
+
+**🏢 Main Street.** Your officer hands you Bayside Roasters as an applicant. Start there, follow
+`Supplies` **forward**, and you get the café, the deli, the caterer, then Larkin Event Hall two
+hops out. Your argument is what the grant protects downstream.
+
+**🌾 Micro-producer.** Nobody hands you anything, and the roaster has not applied — it is upstream
+and quietly fine until it is not. **You have to find it**, by asking which businesses have the most
+downstream reach. Same arrows, same direction, but the search *is* the work.
+
+**🏭 Anchor closure.** The office block announces it is leaving. Follow `DrawsFootfall` **forward**
+and you reach the café, the deli and the parking operator — they lose their weekday trade.
+
+**Now keep going, because this is the part teams will miss.** Those cafés were Bayside Roasters'
+customers. When their trade collapses, the roaster loses its buyers — and that harm travels
+**backward** along `Supplies`, against the arrow, to a business that is nowhere near the office
+and never had anything to do with it.
+
+So the anchor track is not "the same query in reverse." It runs **forward along one edge type,
+then backward along another**, and a team that only ever traverses one way will find the café and
+stop. In GQL that second leg is `<-[:Supplies]-`.
 
 ---
 
@@ -120,6 +173,7 @@ separates a team.
 | *"How far is that supplier really—by road, not straight line?"* | Google Maps routing. We give you coordinates and straight-line distance |
 | *"Which of these businesses are minority- or woman-owned?"* | Certification registries exist per city. **Read the bias section before you use them for ranking** |
 | *"Did the businesses my model calls fragile actually fail?"* | You already have this. The SBA loan records include real charge-offs. Very few teams will notice |
+| *"How many **jobs** does this business support?"* | **Nothing public has it.** Per-business employment is not published for small businesses anywhere in the US — the Census publishes counts by area and industry, never by business. Your cascade can count *businesses* exposed, not jobs. Closing this with your own source is a real contribution |
 
 ---
 
@@ -307,7 +361,7 @@ everything between raw tables and a cascade query the agent can call:
   decision and it changes every query downstream.
 - **Write the cascade query.** Multi-hop, with a stopping rule. How deep, and why?
 - **Decide how to weight a path.** Multiply intensities along it? Take the weakest link? Count
-  jobs at the far end? These give different answers and all are defensible.
+  the count at the far end? These give different answers and all are defensible.
 - **Improve the edge generator.** Ours is deliberately simple—industry match plus walking
   distance. Beating it is one of the highest-value things available today.
 - **The equity audit** ([explained below](#what-auditing-the-outcome-actually-means)).
@@ -378,7 +432,8 @@ Whatever else your agent does, it should produce this—something an officer cou
 meeting on Friday without asking a follow-up question:
 
 - **Which business**, by name and address, and **how much**
-- **What it protects**—the cascade, named: which businesses, how many jobs, how many hops out
+- **What it protects**—the cascade, named: which businesses, at what distance in hops, and how
+  strong each link is
 - **The traversal itself**, shown. Not described—shown
 - **Why this one and not the runner-up.** There is always a runner-up, and the comparison *is* the
   argument
@@ -518,7 +573,7 @@ and that division is exactly what `CREATE PROPERTY GRAPH` expects:
 | `businesses` | **node** | Every business in your corridor that survived our filters—name, address, coordinates, NAICS industry |
 | `employer_blocks` | **node** | Workplace census blocks with real job counts. These are what "closes" in the anchor-closure track |
 | `supplies` | **edge** | Business buys from business, weighted by BEA purchase intensity |
-| `draws_footfall_from` | **edge** | Workers at a block spend at nearby businesses, weighted by job count |
+| `draws_footfall_from` | **edge** | Workers at a block spend at nearby businesses. `worker_share` is that business's share of the block's workers |
 | `borrowed_from` | **edge** | Business borrowed from a named bank—**including whether the loan was charged off** |
 | `tract_demographics` | attributes | Poverty, vehicle access and assistance rates by census tract |
 
