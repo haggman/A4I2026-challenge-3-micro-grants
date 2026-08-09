@@ -134,21 +134,34 @@ San Francisco does something unusually useful here: **the City assigns every reg
 to a named commercial corridor**, so you are not drawing a boundary and defending it. These are
 the City's own designations.
 
-| Corridor | Businesses | Character |
-|---|---:|---|
-| **Parkside Taraval** | 596 | The largest. Neighbourhood-serving retail, long strip |
-| **North Beach** | 579 | The default. Dense, mixed retail and food, tight geography |
-| **Geary Boulevard** | 479 | Long arterial, very mixed industries |
-| **West Portal** | 476 | Compact, strongly neighbourhood-serving |
-| **24th St** | 473 | Mission. Strong independent retail character |
-| **Noriega** | 408 | Sunset. Quiet, almost entirely neighbourhood-serving |
-| **Third Street** | 310 | Bayview. Highest-need census tracts of the set |
-| **Ocean Ave** | 309 | |
-| **Lower Polk** | 264 | The smallest we would recommend |
+| Corridor | Published | After our filters | Industries | Verdict |
+|---|---:|---:|---:|---|
+| **Chinatown** | 1,909 | — | — | Largest. Run Appendix B |
+| **Market/Castro** | 1,519 | — | — | Run Appendix B |
+| **Central Market** | 1,367 | — | — | Run Appendix B |
+| **Mission Street** | 1,024 | — | — | Run Appendix B |
+| **Union Street** | 885 | — | — | Run Appendix B |
+| **Parkside Taraval** | 596 | — | — | Run Appendix B |
+| **North Beach** | 579 | **148** | **35** | ✅ **Tested end to end. The default** |
+| **Geary Boulevard** | 479 | — | — | Run Appendix B |
+| **West Portal** | 476 | — | — | Run Appendix B |
+| **24th St** | 473 | **89** | **30** | ⚠️ Workable but thin — say so in your demo |
+| **Third Street** | 311 | **36** | **19** | ❌ Too thin. Almost no graph structure |
 
-Counts are active businesses as published by the City, measured 2026-08-08. **Roughly half of
-each will survive the privacy filters the notebook applies**—see the data section below, because
-that is a real number you should know before you choose.
+Published counts are active businesses as the City reports them, read live on 2026-08-09. **The
+column that matters is the second one.** We remove sole proprietors and home-address
+registrations before building anything (see [the data section](#the-data-and-why-we-chose-it)),
+and that removes most of the file — North Beach's 579 becomes 148. Which is fine at 579 and fatal
+at 311.
+
+**We have measured three corridors end to end.** The dashes are not us being coy: we have not run
+them, and we will not publish a number we have not measured. **Appendix B of the notebook measures
+any corridor in about a minute** and gives you the same verdict we gave these three. Run it before
+you commit an afternoon.
+
+**Bigger is better here, more than you would expect.** A corridor also needs enough census tracts
+for the equity audit to say anything — North Beach has four, which is workable and not generous.
+The larger corridors are a safer bet on every axis.
 
 **The number that decides whether your graph is interesting is not the business count. It is the
 industry variety.** Supply edges exist only between industries that trade with each other, so 300
