@@ -50,6 +50,7 @@ import io
 import os
 import sys
 import json
+import re
 from pathlib import Path
 
 try:
@@ -207,48 +208,74 @@ def find_use_table():
 
 
 def load_concordance():
-    """BEA industry code -> 4-digit NAICS. Written out so it can be audited."""
+    """BEA industry code -> 4-digit NAICS. Written out so it can be audited.
+
+    Deliberately does NOT use pandas' .str accessor anywhere. Excel sheets have
+    ragged, mixed-type cells - an empty cell arrives as a float NaN even under
+    dtype=str - and .str on a column pandas has decided is float raises. Every
+    cell is coerced with str() one at a time instead. Slower, and it cannot fail
+    on a shape we did not anticipate.
+    """
     print("Fetching BEA/NAICS concordance...")
     r = requests.get(CONCORDANCE_URL, timeout=180)
     r.raise_for_status()
     try:
         sheets = pd.read_excel(io.BytesIO(r.content), sheet_name=None,
-                               dtype=str, header=None)
+                               dtype=object, header=None)
     except ImportError:
         sys.exit("Reading .xlsx needs openpyxl:  pip3 install openpyxl")
 
+    def cells(frame, i):
+        return [str(v).strip().lower() if v is not None else "" for v in frame.iloc[i].values]
+
     best = None
     for name, raw in sheets.items():
-        low = raw.astype(str).apply(lambda c: c.str.lower())
+        if raw.empty:
+            continue
         for hdr in range(min(15, len(raw))):
-            row = list(low.iloc[hdr].values)
-            bea_col = next((i for i, v in enumerate(row)
-                            if "summary" in v or v.strip() == "bea code"
-                            or ("bea" in v and "code" in v)), None)
+            row = cells(raw, hdr)
+            # The BEA concordance workbook has a column per aggregation level
+            # (Sector / Summary / U.Summary / Detail) plus a NAICS column. We
+            # want Summary, because the Use table we pulled is summary level.
+            bea_col = next((i for i, v in enumerate(row) if v == "summary"), None)
+            if bea_col is None:
+                bea_col = next((i for i, v in enumerate(row)
+                                if "summary" in v or ("bea" in v and "code" in v)), None)
             nai_col = next((i for i, v in enumerate(row) if "naics" in v), None)
             if bea_col is None or nai_col is None:
                 continue
-            df = raw.iloc[hdr + 1:, [bea_col, nai_col]].copy()
-            df.columns = ["bea_code", "naics"]
-            df = df.dropna()
-            df["bea_code"] = df.bea_code.astype(str).str.strip()
-            df["naics4"] = df.naics.astype(str).str.extract(r"(\d+)")[0].str[:4]
-            df = df[df.naics4.notna() & (df.bea_code.str.len() > 0)
-                    & (df.bea_code.str.lower() != "nan")]
-            df = df[["bea_code", "naics4"]].drop_duplicates()
-            if best is None or len(df) > len(best[2]):
+
+            pairs = []
+            for i in range(hdr + 1, len(raw)):
+                vals = raw.iloc[i].values
+                code = str(vals[bea_col]).strip() if bea_col < len(vals) else ""
+                nai = str(vals[nai_col]).strip() if nai_col < len(vals) else ""
+                if not code or code.lower() in ("nan", "none", ""):
+                    continue
+                # One BEA code can cover several NAICS: "311, 312" or "3361-3363".
+                # Keep them all - dropping the extras silently loses whole
+                # industries from the graph.
+                for token in re.split(r"[,;/]| and ", nai):
+                    m = re.search(r"(\d{2,6})", token)
+                    if m:
+                        pairs.append((code, m.group(1)[:4]))
+            df = pd.DataFrame(pairs, columns=["bea_code", "naics4"]).drop_duplicates()
+            if len(df) and (best is None or len(df) > len(best[2])):
                 best = (name, hdr, df)
 
     if best is None or len(best[2]) < 20:
-        print("\nSheets found in the workbook:")
+        print("\nCould not locate a BEA-code/NAICS mapping. Workbook contents:")
         for name, raw in sheets.items():
-            print(f"  {name!r}: {raw.shape[0]} rows x {raw.shape[1]} cols")
-            print(f"    first rows: {raw.head(3).values.tolist()}")
-        sys.exit("Could not locate a BEA-code/NAICS mapping. Open the workbook and "
-                 "adjust load_concordance() using the sheet dump above.")
+            print(f"\n  sheet {name!r}: {raw.shape[0]} rows x {raw.shape[1]} cols")
+            for i in range(min(4, len(raw))):
+                print(f"    row {i}: {[str(v)[:28] for v in raw.iloc[i].values[:10]]}")
+        sys.exit("Adjust load_concordance() using the dump above.")
 
     name, hdr, df = best
-    print(f"  using sheet {name!r}, header row {hdr}: {len(df)} code mappings")
+    print(f"  using sheet {name!r}, header row {hdr}")
+    print(f"  {len(df)} BEA-code -> NAICS4 pairs, "
+          f"{df.bea_code.nunique()} distinct BEA codes")
+    print(f"  sample: {df.head(5).values.tolist()}")
     return df
 
 
@@ -315,16 +342,21 @@ def main():
     print(f"Intermediate cells with a valid denominator: {len(inter):,}")
 
     conc = load_concordance()
-    m = dict(zip(conc.bea_code, conc.naics4))
 
-    out = pd.DataFrame({
-        "supplier_naics4": inter["RowCode"].astype(str).str.strip().map(m),
-        "buyer_naics4":    inter["ColCode"].astype(str).str.strip().map(m),
-        "coefficient":     inter["coefficient"].values,
-    })
-    mapped = out.dropna()
-    print(f"Cells whose BOTH industry codes mapped to NAICS: {len(mapped):,} "
-          f"of {len(out):,} ({len(mapped) / max(len(out), 1):.0%})")
+    inter["_row"] = inter["RowCode"].astype(str).str.strip()
+    inter["_col"] = inter["ColCode"].astype(str).str.strip()
+    sup = conc.rename(columns={"bea_code": "_row", "naics4": "supplier_naics4"})
+    buy = conc.rename(columns={"bea_code": "_col", "naics4": "buyer_naics4"})
+
+    before_cells = inter[["_row", "_col"]].drop_duplicates().shape[0]
+    mapped = (inter[["_row", "_col", "coefficient"]]
+              .merge(sup, on="_row").merge(buy, on="_col"))
+    after_cells = mapped[["_row", "_col"]].drop_duplicates().shape[0]
+    print(f"Use cells whose BOTH industry codes mapped to NAICS: {after_cells:,} "
+          f"of {before_cells:,} ({after_cells / max(before_cells, 1):.0%})")
+    print(f"  expanded to {len(mapped):,} NAICS-level pairs "
+          f"(one BEA code can cover several NAICS)")
+    out = mapped[["supplier_naics4", "buyer_naics4", "coefficient"]]
     print("  (value-added rows and final-demand columns do not map to NAICS and")
     print("   are dropped here on purpose - they are not industries.)")
     if len(mapped) < 100:
