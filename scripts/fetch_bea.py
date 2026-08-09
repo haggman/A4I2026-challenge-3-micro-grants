@@ -105,6 +105,50 @@ def row_key(row):
     return None
 
 
+def extract_rows(res):
+    """Pull data rows out of a BEA Results payload, whatever shape it arrives in.
+
+    BEA is not consistent here either. `Results` comes back as a dict for some
+    requests and as a LIST for others - Year='ALL' on InputOutput returns a list
+    with one result set per year, each carrying its own 'Data' array. A third
+    variant returns the data rows directly as the list. Handle all three rather
+    than assuming, and say what we saw if none of them fit.
+    """
+    if isinstance(res, dict):
+        return res.get("Data", []) or []
+    if isinstance(res, list):
+        rows = []
+        for item in res:
+            if not isinstance(item, dict):
+                continue
+            if isinstance(item.get("Data"), list):
+                rows.extend(item["Data"])
+            elif any(k in item for k in ("RowCode", "ColCode", "DataValue")):
+                rows.append(item)
+        return rows
+    return []
+
+
+def describe_shape(res, limit=1200):
+    """Diagnostic for when extract_rows finds nothing."""
+    if isinstance(res, list):
+        out = [f"Results is a LIST of {len(res)} item(s)."]
+        for i, item in enumerate(res[:3]):
+            if isinstance(item, dict):
+                out.append(f"  [{i}] dict keys: {list(item.keys())}")
+                for k, v in item.items():
+                    if isinstance(v, list):
+                        out.append(f"       {k}: list of {len(v)}; first = "
+                                   f"{json.dumps(v[0])[:200] if v else 'empty'}")
+            else:
+                out.append(f"  [{i}] {type(item).__name__}: {str(item)[:160]}")
+        return "\n".join(out)
+    if isinstance(res, dict):
+        return (f"Results is a DICT with keys: {list(res.keys())}\n"
+                f"{json.dumps(res, indent=2)[:limit]}")
+    return f"Results is a {type(res).__name__}: {str(res)[:limit]}"
+
+
 def find_use_table():
     """Find the Use table (commodities x industries), Summary level.
 
@@ -214,10 +258,10 @@ def main():
 
     res = bea(method="GetData", DataSetName="InputOutput",
               TableID=table_id, Year="ALL")
-    rows = res.get("Data", [])
+    rows = extract_rows(res)
     if not rows:
-        sys.exit(f"BEA returned no data rows for table {table_id}.\n"
-                 f"Raw response head:\n{json.dumps(res, indent=2)[:1500]}")
+        sys.exit(f"BEA returned no usable data rows for table {table_id}.\n"
+                 f"{describe_shape(res)}")
 
     df = pd.DataFrame(rows)
     print(f"{len(df):,} raw cells")
