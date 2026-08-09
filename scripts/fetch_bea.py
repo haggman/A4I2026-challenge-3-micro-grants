@@ -1,66 +1,64 @@
 #!/usr/bin/env python3
 """
-A4I 2026 — Challenge 3
+A4I 2026 - Challenge 3
 Generates data/bea_direct_requirements.csv, the pinned BEA coefficient table.
 
-ROI MAINTAINERS ONLY. Students never run this — the output file ships in the repo.
+ROI MAINTAINERS ONLY. Students never run this - the output file ships in the repo.
 
 WHY THIS EXISTS
 ---------------
 The notebook needs to know, for each pair of industries, how much industry A buys
 from industry B per dollar of A's output. That is BEA's "Direct Requirements"
-table, and it is the thing that makes our supply edges a modelling choice built on
-a published statistic rather than an invention.
+table, and it is what makes our supply edges a modelling choice built on a
+published statistic rather than an invention.
 
 BEA's API requires a free registration key. One key for us is fine; 150 attendees
-each signing up on event morning is a help-desk queue we do not want, on top of the
-two Colab API-enablement prompts they already have to click through. So we fetch it
-once and pin the result, exactly as Challenge 2 pins data/foodkeeper.json.
+each signing up on event morning is a help-desk queue we do not want. So we fetch
+it once and pin the result, exactly as Challenge 2 pins data/foodkeeper.json.
 
 USAGE
 -----
-    1. Get a free key (instant, email confirmation): https://apps.bea.gov/api/signup/
-    2. export BEA_API_KEY=your-36-character-key
-    3. python3 scripts/fetch_bea.py
-    4. Commit the generated data/bea_direct_requirements.csv
+    pip3 install requests pandas openpyxl
+    export BEA_API_KEY=your-36-character-key    # https://apps.bea.gov/api/signup/
+    python3 scripts/fetch_bea.py
 
-OUTPUT SCHEMA — the notebook depends on exactly these three columns
+Runs from anywhere - it resolves data/ relative to this file, not your shell's
+working directory.
+
+If table discovery cannot identify the Direct Requirements table, the script
+prints every table BEA offers WITH ITS FULL RAW RECORD and stops. Pick the right
+id from that list and re-run with:
+
+    export BEA_TABLE_ID=61
+    python3 scripts/fetch_bea.py
+
+OUTPUT SCHEMA - the notebook depends on exactly these three columns
 -------------------------------------------------------------------
-    buyer_naics4      STRING   the purchasing industry, as a 4-digit NAICS prefix
-    supplier_naics4   STRING   the supplying industry, same
+    buyer_naics4      STRING   purchasing industry, 4-digit NAICS prefix
+    supplier_naics4   STRING   supplying industry, same
     coefficient       FLOAT    cents of input per dollar of buyer output
-
-NOTE ON THE TableID
--------------------
-BEA does not publish a list of TableID values, and their API guide says so
-explicitly. So this script DISCOVERS the id rather than hardcoding one — see
-`find_direct_requirements_table`. If that discovery fails, it prints every table
-BEA offers and stops, rather than guessing. Do not replace this with a literal id
-you found in a blog post.
-
-NOTE ON THE NAICS MAPPING
--------------------------
-BEA uses its own industry codes, not NAICS. BEA states its summary level
-"generally corresponds to" 4-digit NAICS — note "generally". This script writes
-the concordance it actually used to data/bea_naics_concordance.csv alongside the
-coefficients, so the mapping is auditable rather than implied.
 """
 
 import io
 import os
 import sys
 import json
-import csv
+from pathlib import Path
 
 try:
     import requests
     import pandas as pd
 except ImportError:
-    sys.exit("Needs requests and pandas:  pip install requests pandas")
+    sys.exit("Needs requests and pandas:  pip3 install requests pandas openpyxl")
 
 API = "https://apps.bea.gov/api/data/"
 CONCORDANCE_URL = ("https://www.bea.gov/sites/default/files/2023-10/"
                    "BEA-Industry-and-Commodity-Codes-and-NAICS-Concordance.xlsx")
+
+# Resolve data/ from THIS FILE's location, not the shell's cwd. Running
+# `python3 fetch_bea.py` from inside scripts/ used to write scripts/data/.
+REPO_ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = REPO_ROOT / "data"
 
 KEY = os.environ.get("BEA_API_KEY", "").strip()
 if not KEY:
@@ -71,86 +69,155 @@ if len(KEY) != 36:
 
 def bea(**params):
     params.update(UserID=KEY, ResultFormat="JSON")
-    r = requests.get(API, params=params, timeout=120)
+    r = requests.get(API, params=params, timeout=180)
     r.raise_for_status()
     payload = r.json().get("BEAAPI", {})
     if "Error" in payload:
-        sys.exit(f"BEA API error: {payload['Error']}")
+        sys.exit(f"BEA API error: {json.dumps(payload['Error'], indent=2)}")
     results = payload.get("Results", {})
     if isinstance(results, dict) and "Error" in results:
-        sys.exit(f"BEA API error: {results['Error']}")
+        sys.exit(f"BEA API error: {json.dumps(results['Error'], indent=2)}")
     return results
 
 
+def row_text(row):
+    """Every string value in a record, lowercased and joined.
+
+    BEA is not consistent about what it calls the human-readable field - it has
+    used Description, Desc, and TableName across datasets, and for InputOutput it
+    returned None for 'Description' entirely. So we stop guessing field names and
+    search the whole record.
+    """
+    return " ".join(str(v).lower() for v in row.values() if v is not None)
+
+
+def row_key(row):
+    for k in ("Key", "key", "TableID", "TableId"):
+        if row.get(k) is not None:
+            return str(row[k])
+    return None
+
+
 def find_direct_requirements_table():
-    """Discover the Direct Requirements TableID rather than hardcoding it."""
+    """Discover the Direct Requirements TableID. Never hardcode it - BEA does not
+    publish a list of table ids and says so in their own API guide."""
+    override = os.environ.get("BEA_TABLE_ID", "").strip()
+    if override:
+        print(f"Using BEA_TABLE_ID override: {override}")
+        return override, "(supplied via BEA_TABLE_ID)"
+
     res = bea(method="GetParameterValues", DataSetName="InputOutput",
               ParameterName="TableID")
     rows = res.get("ParamValue", [])
-    hits = [r for r in rows
-            if "direct" in str(r.get("Description", "")).lower()
-            and "requirement" in str(r.get("Description", "")).lower()]
-    if not hits:
-        print("Could not find a 'Direct Requirements' table. BEA offers:")
-        for r in rows:
-            print(f"  {r.get('Key')}: {r.get('Description')}")
-        sys.exit("Pick the right one, then pass it as TABLE_ID below.")
-    # Prefer the summary-level, after-redefinitions variant if several match.
-    for r in hits:
-        d = str(r.get("Description", "")).lower()
-        if "summary" in d and "redefinition" in d:
-            return r["Key"], r["Description"]
-    return hits[0]["Key"], hits[0]["Description"]
+    if not rows:
+        sys.exit(f"BEA returned no TableID values. Raw response:\n"
+                 f"{json.dumps(res, indent=2)[:2000]}")
+
+    scored = []
+    for row in rows:
+        text = row_text(row)
+        if "direct" in text and "requirement" in text:
+            # Prefer summary level, after redefinitions, industry-by-industry.
+            score = sum([
+                3 * ("summary" in text),
+                2 * ("after redefinition" in text or "redefinitions" in text),
+                1 * ("industry" in text),
+            ])
+            scored.append((score, row_key(row), row))
+
+    if scored:
+        scored.sort(key=lambda t: -t[0])
+        best = scored[0]
+        print("Candidate Direct Requirements tables:")
+        for s, k, r in scored:
+            print(f"  [{s}] {k}: {row_text(r)[:110]}")
+        return best[1], row_text(best[2])[:160]
+
+    # Discovery failed. Print the FULL raw record for every table so the next
+    # run can be fixed from this output alone rather than another round trip.
+    print("Could not identify a 'Direct Requirements' table by description.")
+    print("BEA returned these tables. Full raw records follow - find the one whose")
+    print("description mentions Direct Requirements and set BEA_TABLE_ID to its id.\n")
+    for row in rows:
+        print(f"  {json.dumps(row)}")
+    print(f"\n({len(rows)} tables returned.)")
+    print("\nThen:  export BEA_TABLE_ID=<id>  &&  python3 scripts/fetch_bea.py")
+    sys.exit(1)
 
 
 def load_concordance():
     """BEA industry code -> 4-digit NAICS. Written out so it can be audited."""
-    print(f"Fetching BEA/NAICS concordance...")
-    r = requests.get(CONCORDANCE_URL, timeout=120)
+    print("Fetching BEA/NAICS concordance...")
+    r = requests.get(CONCORDANCE_URL, timeout=180)
     r.raise_for_status()
-    # The workbook layout is not documented; read every sheet and find the one
-    # carrying both a BEA code column and a NAICS column.
-    sheets = pd.read_excel(io.BytesIO(r.content), sheet_name=None, dtype=str, header=None)
+    try:
+        sheets = pd.read_excel(io.BytesIO(r.content), sheet_name=None,
+                               dtype=str, header=None)
+    except ImportError:
+        sys.exit("Reading .xlsx needs openpyxl:  pip3 install openpyxl")
+
+    best = None
     for name, raw in sheets.items():
-        flat = raw.astype(str).apply(lambda c: c.str.lower())
-        for hdr in range(min(12, len(raw))):
-            row = list(flat.iloc[hdr].values)
-            bea_col = next((i for i, v in enumerate(row) if "summary" in v or "bea" in v), None)
+        low = raw.astype(str).apply(lambda c: c.str.lower())
+        for hdr in range(min(15, len(raw))):
+            row = list(low.iloc[hdr].values)
+            bea_col = next((i for i, v in enumerate(row)
+                            if "summary" in v or v.strip() == "bea code"
+                            or ("bea" in v and "code" in v)), None)
             nai_col = next((i for i, v in enumerate(row) if "naics" in v), None)
-            if bea_col is not None and nai_col is not None:
-                df = raw.iloc[hdr + 1:, [bea_col, nai_col]]
-                df.columns = ["bea_code", "naics"]
-                df = df.dropna()
-                df["bea_code"] = df.bea_code.astype(str).str.strip()
-                df["naics4"] = (df.naics.astype(str)
-                                .str.extract(r"(\d+)")[0].str[:4])
-                df = df[df.naics4.notna() & (df.bea_code.str.len() > 0)]
-                if len(df) > 20:
-                    print(f"  using sheet {name!r}, header row {hdr}: {len(df)} mappings")
-                    return df[["bea_code", "naics4"]].drop_duplicates()
-    sys.exit("Could not locate a BEA-code/NAICS mapping in that workbook. "
-             "Open it by hand and adjust load_concordance().")
+            if bea_col is None or nai_col is None:
+                continue
+            df = raw.iloc[hdr + 1:, [bea_col, nai_col]].copy()
+            df.columns = ["bea_code", "naics"]
+            df = df.dropna()
+            df["bea_code"] = df.bea_code.astype(str).str.strip()
+            df["naics4"] = df.naics.astype(str).str.extract(r"(\d+)")[0].str[:4]
+            df = df[df.naics4.notna() & (df.bea_code.str.len() > 0)
+                    & (df.bea_code.str.lower() != "nan")]
+            df = df[["bea_code", "naics4"]].drop_duplicates()
+            if best is None or len(df) > len(best[2]):
+                best = (name, hdr, df)
+
+    if best is None or len(best[2]) < 20:
+        print("\nSheets found in the workbook:")
+        for name, raw in sheets.items():
+            print(f"  {name!r}: {raw.shape[0]} rows x {raw.shape[1]} cols")
+            print(f"    first rows: {raw.head(3).values.tolist()}")
+        sys.exit("Could not locate a BEA-code/NAICS mapping. Open the workbook and "
+                 "adjust load_concordance() using the sheet dump above.")
+
+    name, hdr, df = best
+    print(f"  using sheet {name!r}, header row {hdr}: {len(df)} code mappings")
+    return df
 
 
 def main():
     table_id, desc = find_direct_requirements_table()
-    print(f"Using TableID {table_id}: {desc}")
+    print(f"\nUsing TableID {table_id}: {desc}\n")
 
     res = bea(method="GetData", DataSetName="InputOutput",
               TableID=table_id, Year="ALL")
     rows = res.get("Data", [])
     if not rows:
-        sys.exit("BEA returned no data rows for that table.")
+        sys.exit(f"BEA returned no data rows for table {table_id}.\n"
+                 f"Raw response head:\n{json.dumps(res, indent=2)[:1500]}")
+
     io_df = pd.DataFrame(rows)
-    print(f"  {len(io_df):,} raw cells")
+    print(f"{len(io_df):,} raw cells")
+    print(f"Columns BEA returned: {list(io_df.columns)}")
 
-    year = io_df["Year"].max()
-    io_df = io_df[io_df.Year == year]
-    print(f"  newest year: {year}  ({len(io_df):,} cells)")
+    if "Year" in io_df.columns:
+        year = io_df["Year"].max()
+        io_df = io_df[io_df.Year == year]
+        print(f"Newest year: {year}  ({len(io_df):,} cells)")
+    else:
+        year = "unknown"
 
-    io_df["coefficient"] = pd.to_numeric(io_df["DataValue"].astype(str)
-                                         .str.replace(",", ""), errors="coerce")
+    io_df["coefficient"] = pd.to_numeric(
+        io_df["DataValue"].astype(str).str.replace(",", "").str.strip(),
+        errors="coerce")
     io_df = io_df[io_df.coefficient.notna() & (io_df.coefficient > 0)]
+    print(f"Non-zero coefficients: {len(io_df):,}")
 
     conc = load_concordance()
     m = dict(zip(conc.bea_code, conc.naics4))
@@ -159,24 +226,34 @@ def main():
         "supplier_naics4": io_df["RowCode"].astype(str).str.strip().map(m),
         "buyer_naics4":    io_df["ColCode"].astype(str).str.strip().map(m),
         "coefficient":     io_df["coefficient"].values,
-    }).dropna()
-    out = out[out.supplier_naics4 != out.buyer_naics4]
+    })
+    mapped = out.dropna()
+    print(f"Cells whose BOTH industry codes mapped to NAICS: {len(mapped):,} "
+          f"of {len(out):,} ({len(mapped) / max(len(out), 1):.0%})")
+    if len(mapped) < 100:
+        sys.exit("Almost nothing mapped. The concordance picked the wrong columns - "
+                 "inspect data/bea_naics_concordance.csv before trusting anything.")
+
+    out = mapped[mapped.supplier_naics4 != mapped.buyer_naics4]
     out = (out.groupby(["buyer_naics4", "supplier_naics4"], as_index=False)
               .coefficient.max()
               .sort_values("coefficient", ascending=False))
 
-    os.makedirs("data", exist_ok=True)
-    out.to_csv("data/bea_direct_requirements.csv", index=False)
-    conc.to_csv("data/bea_naics_concordance.csv", index=False)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    coeff_path = DATA_DIR / "bea_direct_requirements.csv"
+    conc_path = DATA_DIR / "bea_naics_concordance.csv"
+    out.to_csv(coeff_path, index=False)
+    conc.to_csv(conc_path, index=False)
 
     print()
-    print(f"WROTE data/bea_direct_requirements.csv  ({len(out):,} industry pairs)")
-    print(f"WROTE data/bea_naics_concordance.csv    ({len(conc):,} code mappings)")
-    print(f"  buying industries  : {out.buyer_naics4.nunique()}")
+    print(f"WROTE {coeff_path}  ({len(out):,} industry pairs)")
+    print(f"WROTE {conc_path}  ({len(conc):,} code mappings)")
+    print(f"  buying industries   : {out.buyer_naics4.nunique()}")
     print(f"  supplying industries: {out.supplier_naics4.nunique()}")
     print()
-    print("Strongest relationships, as a sanity check - these should look")
-    print("economically sensible. If they do not, the concordance mapped wrong.")
+    print("SANITY CHECK - the strongest relationships. These should look")
+    print("economically sensible. If they do not, the concordance mapped wrong")
+    print("and you should NOT commit these files.")
     print(out.head(10).to_string(index=False))
     print()
     print(f"Source: BEA Input-Output Accounts, table {table_id}, year {year}.")
