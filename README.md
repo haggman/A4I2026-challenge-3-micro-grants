@@ -32,6 +32,31 @@ simplification. It is the scale at which this problem actually exists.
 
 ---
 
+## How to read this
+
+**This is a reference for your whole afternoon, not something to read end to end now.** Here is
+what each of you needs in the first fifteen minutes.
+
+| If you are… | Read now | Come back for |
+|---|---|---|
+| **Everyone, together** | [The five things](#the-five-things-youre-working-with) · [Three tracks](#three-tracks-one-architecture) · [Pick your corridor](#now-pick-your-corridor) | — |
+| **Team lead** | [Step 0](#step-0organise-your-team) · [How you'll be judged](#how-youll-be-judged) | [What will set yours apart](#what-will-set-yours-apart) — read it *before* you write code |
+| **Data lane** | [Step 4, load the data](#step-4load-the-data) · [What you'll have](#what-youll-have) | [The data, and why we chose it](#the-data-and-why-we-chose-it) · Section 13 of the notebook |
+| **Agent lane** | [What you're building](#what-youre-building) · [The technology](#the-technology-youll-use) | [`agent/README.md`](agent/) · [Reference](#reference) |
+| **Front end lane** | [Front end lane](#front-end-lane2-people) | [Your output artifact](#your-output-artifact-the-grant-memo) |
+| **Story lane** | [Your output artifact](#your-output-artifact-the-grant-memo) | [The data](#the-data-and-why-we-chose-it) — which half is real, because you will be asked |
+
+**Three things everybody should know by the end of hour one**, whatever lane you are in:
+
+1. **Which of your edges are real and which are modelled.** A judge will ask, and the honest answer
+   is a good one. It is [here](#the-data-and-why-we-chose-it).
+2. **Your agent must genuinely traverse the graph**, multi-hop. A single `JOIN` with "graph" in the
+   variable name is the most common way to miss the point while appearing to hit it.
+3. **Most businesses have no cascade at all.** That is not a bug — finding the ones that do is a
+   large part of what you are building.
+
+---
+
 ## The five things you're working with
 
 Small vocabulary, used consistently from here on. Here is one block of a corridor, drawn the way
@@ -39,25 +64,22 @@ your data is actually shaped:
 
 ```mermaid
 flowchart LR
-    E1(["🏢 Office block<br/><i>1,400 workers</i>"])
-    R["☕ Bayside Roasters<br/><i>coffee roasting</i>"]
-    C["🥐 Sixth St Café"]
-    D["🥪 Yerba Deli"]
-    K["🍽️ Kearny Kitchen<br/><i>caterer</i>"]
-    H["🎪 Larkin Event Hall"]
-    P["🅿️ Mint Plaza Parking"]
-
-    R -- Supplies --> C
-    R -- Supplies --> D
-    R -- Supplies --> K
-    K -- Supplies --> H
+    R["☕ Bayside Roasters"]
+    R -- Supplies --> C["🥐 Sixth St Cafe"]
+    R -- Supplies --> D["🥪 Yerba Deli"]
+    R -- Supplies --> K["🍽️ Kearny Kitchen"]
+    K -- Supplies --> H["🎪 Larkin Event Hall"]
+    E1(["🏢 Office block - 1,400 workers"])
     E1 -- DrawsFootfall --> C
     E1 -- DrawsFootfall --> D
-    E1 -- DrawsFootfall --> P
+    E1 -- DrawsFootfall --> P["🅿️ Mint Plaza Parking"]
 
     style E1 fill:#c2185b,stroke:#880e4f,color:#fff
     style R fill:#1565c0,stroke:#0d47a1,color:#fff
 ```
+
+*Blue is the business we will trace from. Pink is an **Employer** — a census block with a real
+worker count, not a company. Bayside Roasters roasts coffee; Kearny Kitchen is a caterer.*
 
 | Term | In the picture |
 |---|---|
@@ -182,7 +204,11 @@ separates a team.
 **This is not a universal application. It is an application for a few blocks**, and choosing
 which blocks is the first real decision your team makes.
 
-**You do not have to pick the city you are sitting in.**
+**You do not have to pick the city you are sitting in — but you do have to pick from this list.**
+This challenge runs on **San Francisco**, and on Los Angeles if you supply your own bounding box.
+Not Toronto, not New York, not the city outside the window. The reason is in
+[the data section](#the-data-and-why-we-chose-it): we need a business registry that publishes an
+industry code under a licence we can actually use, and very few cities do both.
 
 San Francisco does something unusually useful here: **the City assigns every registered business
 to a named commercial corridor**, so you are not drawing a boundary and defending it. These are
@@ -226,8 +252,14 @@ to ask whether the money went where the need is.
 **Third Street is deliberately absent.** It yields 40 businesses, below the floor, and almost no
 graph structure. Appendix B will tell you the same thing if you try it.
 
-**Any of these will work.** If you want one that is not on the list, **Appendix B of the notebook**
-measures it in about a minute and tells you plainly whether it is worth an afternoon.
+**All ten are tested and available both ways** — the notebook builds any of them live, and
+`scripts/load.sh` has all ten pre-built for when the notebook will not run.
+
+**You may use another San Francisco corridor**; the City publishes 27. But only these ten are in
+the snapshot, so if you pick a different one **the notebook is your only path** — the fallback will
+not have it. **Appendix B of the notebook** measures any corridor in about a minute and tells you
+plainly whether it is worth an afternoon. Most of the other 17 are too small, which is why they are
+not here.
 
 **The number that decides whether your graph is interesting is not the business count. It is the
 industry variety.** Supply edges exist only between industries that trade with each other, so 300
@@ -822,6 +854,37 @@ Several places in this challenge ask you to choose rather than follow instructio
 which track, how deep to traverse, how to weight a path, what to cut when you're behind. **None of
 those have a single right answer, and judges are not checking them against a key.** They're asking
 whether you made the choice on purpose and can say why.
+
+---
+
+## Reference
+
+Bookmark the first two; they are the ones you will need today.
+
+**Your differentiator**
+- [Introduction to BigQuery Graph](https://cloud.google.com/bigquery/docs/graph-overview) — start here
+- [Create and query a graph](https://cloud.google.com/bigquery/docs/graph-create) — the DDL, worked
+- [Graph query overview](https://cloud.google.com/bigquery/docs/graph-query-overview) — `MATCH`, quantifiers, `NEXT`
+- [Graph schema best practices](https://cloud.google.com/bigquery/docs/graph-schema-best-practices) — element keys, labels, properties
+- [Visualize graphs](https://cloud.google.com/bigquery/docs/graph-visualization) — the `TO_JSON` rule
+- [GQL functions](https://cloud.google.com/bigquery/docs/reference/standard-sql/graph-gql-functions)
+- [Fraud detection codelab](https://codelabs.developers.google.com/codelabs/fraud-bigquery-graph) — a full worked example on other data
+
+> ⚠️ **Check the URL says `/bigquery/`.** Spanner Graph uses nearly identical GQL, looks identical,
+> and has functions BigQuery does not (`IS_ACYCLIC`, `IS_TRAIL`, `PROPERTY_EXISTS`). Its docs rank
+> highly and will waste your afternoon.
+
+**The rest of the stack**
+- [Agent Development Kit](https://google.github.io/adk-docs/)
+- [MCP Toolbox for Databases](https://github.com/googleapis/mcp-toolbox)
+- [Cloud Run quickstart](https://cloud.google.com/run/docs/quickstarts)
+- [Antigravity CLI](https://antigravity.google/docs/cli/install) · [codelab](https://codelabs.developers.google.com/antigravity-cli-hands-on)
+
+**Our data sources, if you want to check our work**
+- [SF Registered Business Locations](https://data.sfgov.org/resource/g8m3-pdis.json) (PDDL)
+- [SBA 7(a) and 504 FOIA data](https://data.sba.gov/dataset/7a-504-foia)
+- [BEA Input-Output Accounts](https://www.bea.gov/industry/input-output-accounts-data)
+- [Census LEHD LODES](https://lehd.ces.census.gov/data/)
 
 ---
 
