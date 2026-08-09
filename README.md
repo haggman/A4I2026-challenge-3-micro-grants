@@ -528,6 +528,13 @@ is franchised to, come from the **SBA's 7(a) and 504 loan records**, published u
 of the US government. So does something more valuable: **which of those loans were charged off**,
 meaning the business actually failed.
 
+**Expect this layer to be sparse — a handful of businesses per corridor, sometimes one.** SBA 7(a)
+lending is not common, and matching a loan record to a registry record depends on both files
+spelling the business the same way. That is not a defect to work around; it is the honest yield of
+joining two government files that share no identifier, and the notebook reports the count at every
+stage of the join so you can see exactly where the rows went. Treat these edges as high-value
+evidence where they exist rather than as a backbone.
+
 **Two of the connections are modelled, and here is the sentence that matters:**
 
 > **The relationship *types*, and their *industry-level average intensities*, are measured and
