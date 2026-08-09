@@ -8,9 +8,16 @@ ROI MAINTAINERS ONLY. Students never run this - the output file ships in the rep
 WHY THIS EXISTS
 ---------------
 The notebook needs to know, for each pair of industries, how much industry A buys
-from industry B per dollar of A's output. That is BEA's "Direct Requirements"
-table, and it is what makes our supply edges a modelling choice built on a
-published statistic rather than an invention.
+from industry B per dollar of A's output. That is the "direct requirements"
+(technical coefficients) matrix, and it is what makes our supply edges a modelling
+choice built on a published statistic rather than an invention.
+
+BEA's API does NOT publish Direct Requirements. Verified against a live key on
+2026-08-09: the only tables it offers are Total Requirements, Domestic Supply and
+Use. Total requirements already contains every indirect round of the multiplier,
+so using it as an edge weight AND traversing the graph multi-hop would count the
+indirect effects twice. We therefore compute direct requirements ourselves from
+the Use table, the standard way:  A[i,j] = Use[i,j] / X[j].
 
 BEA's API requires a free registration key. One key for us is fine; 150 attendees
 each signing up on event morning is a help-desk queue we do not want. So we fetch
@@ -25,11 +32,11 @@ USAGE
 Runs from anywhere - it resolves data/ relative to this file, not your shell's
 working directory.
 
-If table discovery cannot identify the Direct Requirements table, the script
+If table discovery cannot identify the Use table, the script
 prints every table BEA offers WITH ITS FULL RAW RECORD and stops. Pick the right
 id from that list and re-run with:
 
-    export BEA_TABLE_ID=61
+    export BEA_TABLE_ID=259     # 'Use of Commodities by Industries - Summary'
     python3 scripts/fetch_bea.py
 
 OUTPUT SCHEMA - the notebook depends on exactly these three columns
@@ -98,9 +105,29 @@ def row_key(row):
     return None
 
 
-def find_direct_requirements_table():
-    """Discover the Direct Requirements TableID. Never hardcode it - BEA does not
-    publish a list of table ids and says so in their own API guide."""
+def find_use_table():
+    """Find the Use table (commodities x industries), Summary level.
+
+    NOTE, and this cost us a run: BEA's API does NOT publish a Direct
+    Requirements table. It offers Total Requirements, Supply, and Use, and
+    nothing else. Verified 2026-08-09 against a live key - the ten tables the
+    API returns are Total Requirements (6 variants), Domestic Supply (2), and
+    Use (2).
+
+    We want DIRECT requirements, not total. Total requirements already contains
+    every indirect round of the multiplier. Using it as an edge weight and then
+    traversing the graph multi-hop would count the indirect effects twice - once
+    inside each coefficient, once along the path - and produce inflated cascade
+    numbers that look entirely plausible.
+
+    So we compute the direct-requirements (technical coefficients) matrix
+    ourselves, the standard way:
+
+        A[i, j] = Use[i, j] / X[j]
+
+    where X[j] is total output of industry j. That is what BEA does to produce
+    the Direct Requirements table it publishes on its website but not via API.
+    """
     override = os.environ.get("BEA_TABLE_ID", "").strip()
     if override:
         print(f"Using BEA_TABLE_ID override: {override}")
@@ -116,32 +143,22 @@ def find_direct_requirements_table():
     scored = []
     for row in rows:
         text = row_text(row)
-        if "direct" in text and "requirement" in text:
-            # Prefer summary level, after redefinitions, industry-by-industry.
-            score = sum([
-                3 * ("summary" in text),
-                2 * ("after redefinition" in text or "redefinitions" in text),
-                1 * ("industry" in text),
-            ])
-            scored.append((score, row_key(row), row))
+        if "use of commodities" in text:
+            # Summary (~71 industries) over Sector (~15). Sector is far too
+            # coarse - a corridor would collapse into a handful of industries.
+            scored.append((3 * ("summary" in text), row_key(row), row))
 
     if scored:
         scored.sort(key=lambda t: -t[0])
-        best = scored[0]
-        print("Candidate Direct Requirements tables:")
+        print("Candidate Use tables:")
         for s, k, r in scored:
             print(f"  [{s}] {k}: {row_text(r)[:110]}")
-        return best[1], row_text(best[2])[:160]
+        return scored[0][1], row_text(scored[0][2])[:160]
 
-    # Discovery failed. Print the FULL raw record for every table so the next
-    # run can be fixed from this output alone rather than another round trip.
-    print("Could not identify a 'Direct Requirements' table by description.")
-    print("BEA returned these tables. Full raw records follow - find the one whose")
-    print("description mentions Direct Requirements and set BEA_TABLE_ID to its id.\n")
+    print("Could not identify a Use table. BEA returned these - full raw records:\n")
     for row in rows:
         print(f"  {json.dumps(row)}")
-    print(f"\n({len(rows)} tables returned.)")
-    print("\nThen:  export BEA_TABLE_ID=<id>  &&  python3 scripts/fetch_bea.py")
+    print("\nSet BEA_TABLE_ID to the 'Use of Commodities by Industries - Summary' id.")
     sys.exit(1)
 
 
@@ -192,7 +209,7 @@ def load_concordance():
 
 
 def main():
-    table_id, desc = find_direct_requirements_table()
+    table_id, desc = find_use_table()
     print(f"\nUsing TableID {table_id}: {desc}\n")
 
     res = bea(method="GetData", DataSetName="InputOutput",
@@ -202,34 +219,70 @@ def main():
         sys.exit(f"BEA returned no data rows for table {table_id}.\n"
                  f"Raw response head:\n{json.dumps(res, indent=2)[:1500]}")
 
-    io_df = pd.DataFrame(rows)
-    print(f"{len(io_df):,} raw cells")
-    print(f"Columns BEA returned: {list(io_df.columns)}")
+    df = pd.DataFrame(rows)
+    print(f"{len(df):,} raw cells")
+    print(f"Columns BEA returned: {list(df.columns)}")
 
-    if "Year" in io_df.columns:
-        year = io_df["Year"].max()
-        io_df = io_df[io_df.Year == year]
-        print(f"Newest year: {year}  ({len(io_df):,} cells)")
+    for needed in ("RowCode", "ColCode", "DataValue"):
+        if needed not in df.columns:
+            sys.exit(f"Expected column {needed!r} and BEA did not return it. "
+                     f"Got: {list(df.columns)}")
+
+    if "Year" in df.columns:
+        year = df["Year"].max()
+        df = df[df.Year == year]
+        print(f"Newest year: {year}  ({len(df):,} cells)")
     else:
         year = "unknown"
 
-    io_df["coefficient"] = pd.to_numeric(
-        io_df["DataValue"].astype(str).str.replace(",", "").str.strip(),
-        errors="coerce")
-    io_df = io_df[io_df.coefficient.notna() & (io_df.coefficient > 0)]
-    print(f"Non-zero coefficients: {len(io_df):,}")
+    df["value"] = pd.to_numeric(
+        df["DataValue"].astype(str).str.replace(",", "").str.strip(), errors="coerce")
+    df = df[df.value.notna()]
+
+    # --- the denominator: total output of each industry (column) -------------
+    # Discover the row rather than hardcoding a code. BEA's row for this has been
+    # spelled several ways across vintages.
+    desc_col = next((c for c in ("RowDescr", "RowDescription", "RowName")
+                     if c in df.columns), None)
+    if desc_col is None:
+        sys.exit(f"No row-description column to find total output with. "
+                 f"Columns: {list(df.columns)}")
+
+    labels = df[desc_col].astype(str)
+    mask = labels.str.contains("total industry output", case=False, na=False)
+    if not mask.any():
+        mask = labels.str.fullmatch(r"\s*total output\s*", case=False, na=False)
+    if not mask.any():
+        print("\nCould not find a total-industry-output row. Row labels present:")
+        for lbl in sorted(labels.unique())[:80]:
+            print(f"  {lbl}")
+        sys.exit("Adjust the total-output matcher using the list above.")
+
+    out_row = df[mask]
+    print(f"Total-output row: {out_row[desc_col].iloc[0]!r} "
+          f"(RowCode {out_row.RowCode.iloc[0]}), {len(out_row)} industry columns")
+    X = dict(zip(out_row.ColCode.astype(str).str.strip(), out_row.value))
+
+    # --- A[i,j] = Use[i,j] / X[j] --------------------------------------------
+    inter = df[~mask].copy()
+    inter["denom"] = inter.ColCode.astype(str).str.strip().map(X)
+    inter = inter[inter.denom.notna() & (inter.denom > 0) & (inter.value > 0)]
+    inter["coefficient"] = inter.value / inter.denom
+    print(f"Intermediate cells with a valid denominator: {len(inter):,}")
 
     conc = load_concordance()
     m = dict(zip(conc.bea_code, conc.naics4))
 
     out = pd.DataFrame({
-        "supplier_naics4": io_df["RowCode"].astype(str).str.strip().map(m),
-        "buyer_naics4":    io_df["ColCode"].astype(str).str.strip().map(m),
-        "coefficient":     io_df["coefficient"].values,
+        "supplier_naics4": inter["RowCode"].astype(str).str.strip().map(m),
+        "buyer_naics4":    inter["ColCode"].astype(str).str.strip().map(m),
+        "coefficient":     inter["coefficient"].values,
     })
     mapped = out.dropna()
     print(f"Cells whose BOTH industry codes mapped to NAICS: {len(mapped):,} "
           f"of {len(out):,} ({len(mapped) / max(len(out), 1):.0%})")
+    print("  (value-added rows and final-demand columns do not map to NAICS and")
+    print("   are dropped here on purpose - they are not industries.)")
     if len(mapped) < 100:
         sys.exit("Almost nothing mapped. The concordance picked the wrong columns - "
                  "inspect data/bea_naics_concordance.csv before trusting anything.")
@@ -238,6 +291,12 @@ def main():
     out = (out.groupby(["buyer_naics4", "supplier_naics4"], as_index=False)
               .coefficient.max()
               .sort_values("coefficient", ascending=False))
+
+    # A technical coefficient is a share of output - it cannot exceed 1.
+    if out.coefficient.max() > 1.0:
+        print(f"\nWARNING: max coefficient is {out.coefficient.max():.3f}, above 1.0.")
+        print("A direct-requirements coefficient is cents per dollar of output and")
+        print("cannot exceed 1. The denominator is probably wrong. Do NOT commit.")
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     coeff_path = DATA_DIR / "bea_direct_requirements.csv"
@@ -250,13 +309,15 @@ def main():
     print(f"WROTE {conc_path}  ({len(conc):,} code mappings)")
     print(f"  buying industries   : {out.buyer_naics4.nunique()}")
     print(f"  supplying industries: {out.supplier_naics4.nunique()}")
+    print(f"  coefficient range   : {out.coefficient.min():.5f} to {out.coefficient.max():.5f}")
     print()
     print("SANITY CHECK - the strongest relationships. These should look")
     print("economically sensible. If they do not, the concordance mapped wrong")
     print("and you should NOT commit these files.")
-    print(out.head(10).to_string(index=False))
+    print(out.head(12).to_string(index=False))
     print()
-    print(f"Source: BEA Input-Output Accounts, table {table_id}, year {year}.")
+    print(f"Source: BEA Input-Output Accounts, Use table {table_id}, year {year},")
+    print("normalised by total industry output to give direct requirements.")
     print("Licence: public domain (https://bea.gov/help/faq/145). Commit both files.")
 
 
