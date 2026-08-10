@@ -2,7 +2,7 @@
 
 ## `bea_direct_requirements.csv`
 
-The published rates that make this challenge's supply edges a modelling choice rather than an
+The published rates that make this challenge's supply edges a modeling choice rather than an
 invention.
 
 Each row says: **businesses in industry A buy this many cents of input from industry B, per
@@ -31,7 +31,7 @@ ship is deliberately simple so that beating it is possible.
 
 BEA uses its own industry codes, not NAICS. This is the mapping used to translate them, written
 out alongside the coefficients so the translation is auditable rather than implied. BEA states
-its summary level "generally corresponds to" 4-digit NAICS — note *generally*. The correspondence
+its summary level "generally corresponds to" 4-digit NAICS—note *generally*. The correspondence
 is not perfectly one-to-one, and a few BEA industries have no NAICS analogue at all.
 
 ## Why these are committed rather than downloaded
@@ -40,10 +40,10 @@ BEA's API requires a free registration key. That is fine for one person and a ba
 of 150 people on event morning. We fetched it once and pinned the result.
 
 `scripts/fetch_bea.py` is the generator. It discovers BEA's table id at runtime rather than
-hardcoding one, because BEA does not publish a list of table ids — so if you regenerate, you get
+hardcoding one, because BEA does not publish a list of table ids—so if you regenerate, you get
 whatever BEA calls Direct Requirements today rather than whatever it called it in 2023.
 
-**Licence:** public domain. BEA states: *"Unless stated otherwise, the information posted on the
+**License:** public domain. BEA states: *"Unless stated otherwise, the information posted on the
 BEA web site is in the public domain and may be used or reproduced without specific permission."*
 (https://bea.gov/help/faq/145)
 

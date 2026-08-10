@@ -11,15 +11,15 @@ bash scripts/load.sh 24th-st
 bash scripts/load.sh --list             # show available corridors
 ```
 
-Invoke it with `bash`, not `./scripts/load.sh` — that way it works regardless of whether the file
+Invoke it with `bash`, not `./scripts/load.sh`—that way it works regardless of whether the file
 arrived with its executable bit set, which depends on how your repo was created.
 
 Safe to run repeatedly. Every table load uses `--replace`, so the script is idempotent and
 interrupting it breaks nothing.
 
 **Use the notebook if you can.** This script gets you the tables without the teaching, and one
-piece of that teaching — which of the connections in your graph are measured and which are
-modelled — is something judges will ask you about directly.
+piece of that teaching—which of the connections in your graph are measured and which are
+modeled—is something judges will ask you about directly.
 
 ## `fetch_bea.py`
 
@@ -32,7 +32,7 @@ export BEA_API_KEY=your-36-character-key      # free: https://apps.bea.gov/api/s
 python3 scripts/fetch_bea.py
 ```
 
-It discovers the table id from the API rather than hardcoding one — BEA does not publish a list
+It discovers the table id from the API rather than hardcoding one—BEA does not publish a list
 of table ids and says so explicitly, so any literal id you find in a blog post is a guess. If
 discovery fails it prints every table BEA offers, with full raw records, and stops rather than
 picking one.

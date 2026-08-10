@@ -40,19 +40,19 @@ what each of you needs in the first fifteen minutes.
 | If you are… | Read now | Come back for |
 |---|---|---|
 | **Everyone, together** | [The five things](#the-five-things-youre-working-with) · [Three tracks](#three-tracks-one-architecture) · [Pick your corridor](#now-pick-your-corridor) | — |
-| **Team lead** | [Step 0](#step-0organise-your-team) · [How you'll be judged](#how-youll-be-judged) | [What will set yours apart](#what-will-set-yours-apart) — read it *before* you write code |
+| **Team lead** | [Step 0](#step-0organize-your-team) · [How you'll be judged](#how-youll-be-judged) | [What will set yours apart](#what-will-set-yours-apart)—read it *before* you write code |
 | **Data lane** | [Step 4, load the data](#step-4load-the-data) · [What you'll have](#what-youll-have) | [The data, and why we chose it](#the-data-and-why-we-chose-it) · Section 13 of the notebook |
 | **Agent lane** | [What you're building](#what-youre-building) · [The technology](#the-technology-youll-use) | [`agent/README.md`](agent/) · [Reference](#reference) |
 | **Front end lane** | [Front end lane](#front-end-lane2-people) | [Your output artifact](#your-output-artifact-the-grant-memo) |
-| **Story lane** | [Your output artifact](#your-output-artifact-the-grant-memo) | [The data](#the-data-and-why-we-chose-it) — which half is real, because you will be asked |
+| **Story lane** | [Your output artifact](#your-output-artifact-the-grant-memo) | [The data](#the-data-and-why-we-chose-it)—which half is real, because you will be asked |
 
 **Three things everybody should know by the end of hour one**, whatever lane you are in:
 
-1. **Which of your edges are real and which are modelled.** A judge will ask, and the honest answer
+1. **Which of your edges are real and which are modeled.** A judge will ask, and the honest answer
    is a good one. It is [here](#the-data-and-why-we-chose-it).
 2. **Your agent must genuinely traverse the graph**, multi-hop. A single `JOIN` with "graph" in the
    variable name is the most common way to miss the point while appearing to hit it.
-3. **Most businesses have no cascade at all.** That is not a bug — finding the ones that do is a
+3. **Most businesses have no cascade at all.** That is not a bug—finding the ones that do is a
    large part of what you are building.
 
 ---
@@ -78,7 +78,7 @@ flowchart LR
     style R fill:#1565c0,stroke:#0d47a1,color:#fff
 ```
 
-*Blue is the business we will trace from. Pink is an **Employer** — a census block with a real
+*Blue is the business we will trace from. Pink is an **Employer**—a census block with a real
 worker count, not a company. Bayside Roasters roasts coffee; Kearny Kitchen is a caterer.*
 
 | Term | In the picture |
@@ -86,7 +86,7 @@ worker count, not a company. Bayside Roasters roasts coffee; Kearny Kitchen is a
 | **Node** | Every box. Two kinds: a **Business** (blue and grey) and an **Employer** block (pink). Employers are census blocks with a real worker count, not companies |
 | **Edge** | Every arrow, and it has a direction. **`Supplies`** runs supplier → buyer. **`DrawsFootfall`** runs employer → the businesses those workers spend at |
 | **Property** | What an edge or node carries. `Supplies` has `intensity`, how much of a buyer's input budget that industry represents. `DrawsFootfall` has `worker_share` |
-| **Cascade** | What is exposed when a node fails. Bayside Roasters closing reaches the café, the deli, the caterer — **and then Larkin Event Hall, which never bought a bean from them** |
+| **Cascade** | What is exposed when a node fails. Bayside Roasters closing reaches the café, the deli, the caterer—**and then Larkin Event Hall, which never bought a bean from them** |
 | **Traversal** | Walking those arrows. `-[:Supplies]->{1,2}` follows the supply arrow one or two steps. That `{1,2}` is the part SQL cannot do |
 
 **The single most important thing about this picture: arrows point from the thing depended upon
@@ -95,7 +95,7 @@ Follow it backward and you are tracing *what this business needs to survive*. Bo
 questions and they give completely different answers, so decide which one you are asking before
 you write a `MATCH`.
 
-Notice Mint Plaza Parking. It has one edge in and none out — **a leaf.** Most businesses on a real
+Notice Mint Plaza Parking. It has one edge in and none out—**a leaf.** Most businesses on a real
 street are leaves, because they sell to the public rather than to each other. In the default
 corridor only 86 of 230 businesses have anything two hops downstream of them, and finding which
 ones is a large part of what your agent is for.
@@ -131,15 +131,15 @@ one enters the graph somewhere different and **one of them changes direction hal
 `Supplies` **forward**, and you get the café, the deli, the caterer, then Larkin Event Hall two
 hops out. Your argument is what the grant protects downstream.
 
-**🌾 Micro-producer.** Nobody hands you anything, and the roaster has not applied — it is upstream
+**🌾 Micro-producer.** Nobody hands you anything, and the roaster has not applied—it is upstream
 and quietly fine until it is not. **You have to find it**, by asking which businesses have the most
 downstream reach. Same arrows, same direction, but the search *is* the work.
 
 **🏭 Anchor closure.** The office block announces it is leaving. Follow `DrawsFootfall` **forward**
-and you reach the café, the deli and the parking operator — they lose their weekday trade.
+and you reach the café, the deli and the parking operator—they lose their weekday trade.
 
 **Now keep going, because this is the part teams will miss.** Those cafés were Bayside Roasters'
-customers. When their trade collapses, the roaster loses its buyers — and that harm travels
+customers. When their trade collapses, the roaster loses its buyers—and that harm travels
 **backward** along `Supplies`, against the arrow, to a business that is nowhere near the office
 and never had anything to do with it.
 
@@ -170,7 +170,7 @@ Over the next two hours the same officer asks all of these:
 | *"This applicant has four suppliers downstream. Are any of them already fragile?"* | Traversal plus the loan history on the far end |
 | *"Nobody at the far end of that chain applied. Should they have?"* | The anchor-closure question in miniature—the graph knows things the queue does not |
 | *"What does $8,000 actually change?"* | Nothing in the data answers this. **You have to say what you are assuming** |
-| *"Whose neighbourhood does this help?"* | Census tract demographics for the businesses you chose |
+| *"Whose neighborhood does this help?"* | Census tract demographics for the businesses you chose |
 | *"Write it up. I present Friday."* | Gemini, assembling the memo from everything above |
 
 Notice these need **different things**. Some need the traversal. One needs only a lookup. One
@@ -189,13 +189,13 @@ separates a team.
 | The question | What you'd need to add |
 |---|---|
 | *"Is this business actually behind on rent?"* | Nothing public exists. Commercial lease and arrears data is private everywhere |
-| *"Who owns the building?"* | Assessor parcel data. Public in most counties, licence varies—check before you load |
+| *"Who owns the building?"* | Assessor parcel data. Public in most counties, license varies—check before you load |
 | *"Is the street about to be dug up for two years?"* | Municipal capital-projects and permit feeds. Several cities publish these |
-| *"Has this business been cited, inspected, or shut down before?"* | Health and building inspection datasets. Widely published, often licence-clean |
+| *"Has this business been cited, inspected, or shut down before?"* | Health and building inspection datasets. Widely published, often license-clean |
 | *"How far is that supplier really—by road, not straight line?"* | Google Maps routing. We give you coordinates and straight-line distance |
 | *"Which of these businesses are minority- or woman-owned?"* | Certification registries exist per city. **Read the bias section before you use them for ranking** |
 | *"Did the businesses my model calls fragile actually fail?"* | You already have this. The SBA loan records include real charge-offs. Very few teams will notice |
-| *"How many **jobs** does this business support?"* | **Nothing public has it.** Per-business employment is not published for small businesses anywhere in the US — the Census publishes counts by area and industry, never by business. Your cascade can count *businesses* exposed, not jobs. Closing this with your own source is a real contribution |
+| *"How many **jobs** does this business support?"* | **Nothing public has it.** Per-business employment is not published for small businesses anywhere in the US—the Census publishes counts by area and industry, never by business. Your cascade can count *businesses* exposed, not jobs. Closing this with your own source is a real contribution |
 
 ---
 
@@ -204,11 +204,11 @@ separates a team.
 **This is not a universal application. It is an application for a few blocks**, and choosing
 which blocks is the first real decision your team makes.
 
-**You do not have to pick the city you are sitting in — but you do have to pick from this list.**
+**You do not have to pick the city you are sitting in—but you do have to pick from this list.**
 This challenge runs on **San Francisco**, and on Los Angeles if you supply your own bounding box.
 Not Toronto, not New York, not the city outside the window. The reason is in
 [the data section](#the-data-and-why-we-chose-it): we need a business registry that publishes an
-industry code under a licence we can actually use, and very few cities do both.
+industry code under a license we can actually use, and very few cities do both.
 
 San Francisco does something unusually useful here: **the City assigns every registered business
 to a named commercial corridor**, so you are not drawing a boundary and defending it. These are
@@ -229,34 +229,34 @@ the City's own designations.
 
 Every number was **measured from the published snapshot on 2026-08-09**, not estimated. These are
 counts *after* we remove sole proprietors and home-address registrations, which is most of what the
-City publishes — Chinatown's 1,909 listings become 413 businesses. The section on
+City publishes—Chinatown's 1,909 listings become 413 businesses. The section on
 [the data](#the-data-and-why-we-chose-it) explains why.
 
 **Read the third column before you choose, not the first.** "Suppliers with depth" counts
 businesses that have anything **two hops** downstream of them, and it decides whether a cascade
 query returns something interesting or an empty set. **It does not track size.** Central Market has
 *half* Chinatown's businesses and **more than twice** as many with real downstream reach. If you
-take one thing from this table, take that: you cannot tell which businesses hold a neighbourhood up
+take one thing from this table, take that: you cannot tell which businesses hold a neighborhood up
 by counting how many there are. That is the entire challenge, visible before you write any code.
 
 **Notice how small that column is everywhere.** In North Beach, 18 of 148 businesses have a two-hop
-cascade. That is not a data problem — most businesses on a commercial street sell to the public, not
+cascade. That is not a data problem—most businesses on a commercial street sell to the public, not
 to each other. **Finding which of your applicants actually hold something up is a large part of what
 your agent is for**, and a grant officer with forty applications has no way to know.
 
 **The last two columns matter for your equity audit.** With a single census tract, West Portal
-cannot support an audit at all — there is nothing to compare against. Central Market combines the
+cannot support an audit at all—there is nothing to compare against. Central Market combines the
 most graph depth with the highest-need tracts in the set, which makes it the most interesting place
 to ask whether the money went where the need is.
 
 **Third Street is deliberately absent.** It yields 40 businesses, below the floor, and almost no
 graph structure. Appendix B will tell you the same thing if you try it.
 
-**All ten are tested and available both ways** — the notebook builds any of them live, and
+**All ten are tested and available both ways**—the notebook builds any of them live, and
 `scripts/load.sh` has all ten pre-built for when the notebook will not run.
 
 **You may use another San Francisco corridor**; the City publishes 27. But only these ten are in
-the snapshot, so if you pick a different one **the notebook is your only path** — the fallback will
+the snapshot, so if you pick a different one **the notebook is your only path**—the fallback will
 not have it. **Appendix B of the notebook** measures any corridor in about a minute and tells you
 plainly whether it is worth an afternoon. Most of the other 17 are too small, which is why they are
 not here.
@@ -268,13 +268,13 @@ businesses across 40 industries produces a far richer network than 500 that are 
 is worth building on.
 
 **Los Angeles also works** and is the second tested city—it has no corridor column, so you give a
-bounding box instead. Any US city with an open, licence-clean business registry will work in
+bounding box instead. Any US city with an open, license-clean business registry will work in
 principle, but only these two are tested.
 
-> **Why not Chicago or New York?** We checked both. Chicago's business licence file has no NAICS
+> **Why not Chicago or New York?** We checked both. Chicago's business license file has no NAICS
 > industry code, and every supply relationship in this challenge comes from an industry-to-industry
-> lookup—so there is nothing to join on. New York's open data portal states no licence at all for
-> its business files, and absence of a licence grants no rights. Both are good datasets that
+> lookup—so there is nothing to join on. New York's open data portal states no license at all for
+> its business files, and absence of a license grants no rights. Both are good datasets that
 > happen not to fit. It is a useful illustration of the difference between *available* and
 > *usable*.
 
@@ -361,7 +361,7 @@ You have **4.5 hours** and there are **8–10 of you**. That is too many people 
 and the biggest risk to your team is the first hour disappearing into setup. Spend twenty minutes
 on Step 0. It pays for itself twice over.
 
-### Step 0—Organise your team
+### Step 0—Organize your team
 
 **Pick a team lead.** One person who makes the call when you are behind—and you *will* be behind.
 
@@ -453,7 +453,7 @@ moment that lands beats a thorough walkthrough nobody has time to hear.**
   a screenshot ready in case the live version misbehaves.
 - **The Grant Memo**—your output artifact (see below). Something an officer would actually receive.
 - **The honest limitations.** Judges explicitly reward this. One line in the deck is enough.
-- **Know which of your edges are real and which are modelled.** You will be asked. The answer is
+- **Know which of your edges are real and which are modeled.** You will be asked. The answer is
   in the notebook and it is a good one—make sure whoever presents can give it.
 
 Time the whole thing out loud at least once. Teams almost always run long.
@@ -471,8 +471,8 @@ meeting on Friday without asking a follow-up question:
   argument
 - **What you are assuming.** A grant changes a probability, not an outcome. Say what you think it
   changes
-- **Which parts of the evidence are modelled**, in one honest line
-- **Who the neighbourhood is**—tract demographics for where the money lands
+- **Which parts of the evidence are modeled**, in one honest line
+- **Who the neighborhood is**—tract demographics for where the money lands
 
 ### Step 1—Create the team repository
 
@@ -572,7 +572,7 @@ own. Review before you accept.
 4. Click **Import**, open the notebook, set `CORRIDOR` at the top, and run the cells top to bottom.
 
 **Read the text between the cells.** Several explanations will save you time later, and one of
-them—which of your edges are measured and which are modelled—is something judges will ask you
+them—which of your edges are measured and which are modeled—is something judges will ask you
 about directly.
 
 **If the notebook won't run**, there's a headless fallback. From the repo root in Cloud Shell:
@@ -627,18 +627,18 @@ is franchised to, come from the **SBA's 7(a) and 504 loan records**, published u
 of the US government. So does something more valuable: **which of those loans were charged off**,
 meaning the business actually failed.
 
-**Expect this layer to be sparse — a handful of businesses per corridor, sometimes one.** SBA 7(a)
+**Expect this layer to be sparse—a handful of businesses per corridor, sometimes one.** SBA 7(a)
 lending is not common, and matching a loan record to a registry record depends on both files
 spelling the business the same way. That is not a defect to work around; it is the honest yield of
 joining two government files that share no identifier, and the notebook reports the count at every
 stage of the join so you can see exactly where the rows went. Treat these edges as high-value
 evidence where they exist rather than as a backbone.
 
-**Two of the connections are modelled, and here is the sentence that matters:**
+**Two of the connections are modeled, and here is the sentence that matters:**
 
 > **The relationship *types*, and their *industry-level average intensities*, are measured and
 > published by the federal government. The assignment of those averages to specific pairs of
-> businesses is ours—a modelling choice, not a measurement.**
+> businesses is ours—a modeling choice, not a measurement.**
 
 The Bureau of Economic Analysis publishes, from survey and tax data, how much every industry buys
 from every other. That a restaurant spends a measurable share of its input budget with food
@@ -669,8 +669,8 @@ corridor. **So businesses in input-heavy, well-represented industries accumulate
 businesses in service-light or unusual industries accumulate almost none.** A restaurant buys from
 everyone. A barber shop buys from almost nobody.
 
-Your cascade will therefore favour restaurants and light manufacturing over personal services—**not
-because they matter less to the neighbourhood, but because our edge generator can see them
+Your cascade will therefore favor restaurants and light manufacturing over personal services—**not
+because they matter less to the neighborhood, but because our edge generator can see them
 better.** That is a mechanical bias baked into data we handed you. Finding it in your own output
 and reporting it is a better result than an audit that came back clean.
 
@@ -722,14 +722,14 @@ you win.** Spend fifteen minutes deciding what *your* version does that nobody e
 - **Take the equity audit seriously** instead of as a footnote. The structural bias described above
   is probably in your output right now.
 - **Bring a dataset nobody else has**—parcel ownership, capital-projects schedules, inspection
-  history. (See below—check the licence first.)
+  history. (See below—check the license first.)
 
 Read [how you'll be judged](#how-youll-be-judged) *before* you decide. It's at the bottom, it takes
 two minutes, and it will change what you build.
 
 ### The add-on we'd build if we had another four hours
 
-The data section admits something: **two of your three edge types are modelled, because no public
+The data section admits something: **two of your three edge types are modeled, because no public
 dataset in the United States records that one local business supplies another.** We looked hard.
 It does not exist.
 
@@ -761,7 +761,7 @@ better, bring it. Thoughtful sourcing is exactly the judgment this challenge rew
 **Augment, don't replace.** Get the core working first. "Let's find better data" is one of the most
 reliable ways to lose ninety minutes and have nothing to demo.
 
-**Check the licence before you load it.** This is a publicly branded event and winning projects get
+**Check the license before you load it.** This is a publicly branded event and winning projects get
 promoted. Anything you bring has to clear the same bar we applied to ourselves:
 
 | | |
@@ -770,7 +770,7 @@ promoted. Anything you bring has to clear the same bar we applied to ourselves:
 | ❌ No **NoDerivatives** (ND) | Building on the data is the whole point |
 | ❌ No **share-alike** (ODbL, CC BY-SA) | It would encumber what *you* build |
 | ❌ No **individual-level personal data** | Aggregate public statistics only |
-| ❌ No **unstated licence** | No licence means no rights granted |
+| ❌ No **unstated license** | No license means no rights granted |
 | ✅ Public domain, CC0, US Government works | Safe |
 
 **The trap most likely to catch you on this challenge:** commercial business-data providers—the
@@ -799,7 +799,7 @@ agent/                               Empty. Your agent goes here.
 ```
 
 `agent/` is empty on purpose. We built the on-ramp—a real corridor, real businesses, one fully real
-relationship, two modelled ones with their sources named, and validation that tells you plainly
+relationship, two modeled ones with their sources named, and validation that tells you plainly
 whether any of it is wrong. We didn't build the vehicle.
 
 ---
@@ -827,8 +827,8 @@ can't win on breadth alone.
 This is the one teams under-invest in, because it's least visible in a demo. It's a quarter of your
 score and the easiest place to stand out. Four concrete things:
 
-**Data decisions you can defend.** Which of your edges are real and which are modelled? (You were
-told. Make sure whoever presents knows.) If you brought your own dataset, do you know its licence?
+**Data decisions you can defend.** Which of your edges are real and which are modeled? (You were
+told. Make sure whoever presents knows.) If you brought your own dataset, do you know its license?
 
 **Validation.** Did you check your tables before building, or assume no error meant no problem? The
 notebook ships a validation section—using it, and saying what it told you, counts. One of its
@@ -838,7 +838,7 @@ duplicates silently multiply your paths rather than raising an error.
 **Bias handling.** Did you run the [equity audit](#what-auditing-the-outcome-actually-means)? Did
 you find the industry bias we warned you about? Bring the numbers, not the intention.
 
-**Knowing what your system can't do.** Two of three edge types are modelled. The footfall locations
+**Knowing what your system can't do.** Two of three edge types are modeled. The footfall locations
 are approximate to census tract. A grant changes a probability, not an outcome. A team that
 volunteers its limitations shows more skill than one that oversells—and judges are told to reward
 it.
@@ -862,13 +862,13 @@ whether you made the choice on purpose and can say why.
 Bookmark the first two; they are the ones you will need today.
 
 **Your differentiator**
-- [Introduction to BigQuery Graph](https://cloud.google.com/bigquery/docs/graph-overview) — start here
-- [Create and query a graph](https://cloud.google.com/bigquery/docs/graph-create) — the DDL, worked
-- [Graph query overview](https://cloud.google.com/bigquery/docs/graph-query-overview) — `MATCH`, quantifiers, `NEXT`
-- [Graph schema best practices](https://cloud.google.com/bigquery/docs/graph-schema-best-practices) — element keys, labels, properties
-- [Visualize graphs](https://cloud.google.com/bigquery/docs/graph-visualization) — the `TO_JSON` rule
+- [Introduction to BigQuery Graph](https://cloud.google.com/bigquery/docs/graph-overview)—start here
+- [Create and query a graph](https://cloud.google.com/bigquery/docs/graph-create)—the DDL, worked
+- [Graph query overview](https://cloud.google.com/bigquery/docs/graph-query-overview)—`MATCH`, quantifiers, `NEXT`
+- [Graph schema best practices](https://cloud.google.com/bigquery/docs/graph-schema-best-practices)—element keys, labels, properties
+- [Visualize graphs](https://cloud.google.com/bigquery/docs/graph-visualization)—the `TO_JSON` rule
 - [GQL functions](https://cloud.google.com/bigquery/docs/reference/standard-sql/graph-gql-functions)
-- [Fraud detection codelab](https://codelabs.developers.google.com/codelabs/fraud-bigquery-graph) — a full worked example on other data
+- [Fraud detection codelab](https://codelabs.developers.google.com/codelabs/fraud-bigquery-graph)—a full worked example on other data
 
 > ⚠️ **Check the URL says `/bigquery/`.** Spanner Graph uses nearly identical GQL, looks identical,
 > and has functions BigQuery does not (`IS_ACYCLIC`, `IS_TRAIL`, `PROPERTY_EXISTS`). Its docs rank
